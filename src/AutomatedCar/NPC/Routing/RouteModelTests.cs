@@ -1,10 +1,12 @@
 ﻿using System;
+using AutomatedCar.Npc;
+using AutomatedCar.Npc.Routing;
+using Xunit;
+
 
 namespace AutomatedCarTests.Npc
 {
-    using AutomatedCar.Npc;
-    using AutomatedCar.Npc.Routing;
-    using Xunit;
+
 
     public class RouteModelTests
     {

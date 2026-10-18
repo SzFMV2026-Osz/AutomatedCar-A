@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using AutomatedCar.Npc;
+using AutomatedCar.Npc.Routing;
 
 namespace AutomatedCar.Npc.Routing
 {
