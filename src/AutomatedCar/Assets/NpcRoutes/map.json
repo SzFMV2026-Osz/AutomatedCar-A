@@ -1,0 +1,30 @@
+{
+  "map": "test_world",
+  "npcs": [
+    {
+      "id": "tw_blue_car",
+      "kind": "Car",
+      "sprite": "car_2_blue.png",
+      "loop": true,
+      "waypoints": [
+        {
+          "x": 650,
+          "y": 402,
+          "speed": 40
+        },
+        {
+          "x": 2473,
+          "y": 402,
+          "speed": 25,
+          "accel": 3
+        },
+        {
+          "x": 1594,
+          "y": 535,
+          "speed": 5,
+          "wait": 2
+        }
+      ]
+    }
+  ]
+}
