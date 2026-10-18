@@ -1,6 +1,6 @@
 ﻿using System;
-using AutomatedCar.Npc;
-using AutomatedCar.Npc.Routing;
+using AutomatedCar.NPC;
+using AutomatedCar.NPC.Routing;
 using Xunit;
 
 
