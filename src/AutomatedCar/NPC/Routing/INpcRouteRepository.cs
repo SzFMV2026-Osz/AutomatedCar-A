@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
 using System;
-using AutomatedCar.Npc;
-using AutomatedCar.Npc.Routing;
+using AutomatedCar.NPC;
 
-namespace AutomatedCar.Npc.Routing
+namespace AutomatedCar.NPC.Routing
 {
     public interface INpcRouteRepository
     {

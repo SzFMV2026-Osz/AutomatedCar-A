@@ -4,7 +4,7 @@ using AutomatedCar.Npc.Routing;
 using Xunit;
 
 
-namespace AutomatedCarTests.Npc
+namespace AutomatedCarTests.NPC
 {
 
 

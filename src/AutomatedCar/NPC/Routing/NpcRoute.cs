@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using AutomatedCar.Npc;
-using AutomatedCar.Npc.Routing;
+using AutomatedCar.NPC;
 
-namespace AutomatedCar.Npc.Routing
+namespace AutomatedCar.NPC.Routing
 {
     public sealed record NpcRoute(
         string NpcId,
