@@ -8,6 +8,7 @@ namespace AutomatedCar.SystemComponents
         private List<SystemComponent> components = new List<SystemComponent>();
 
         public IReadOnlyDummyPacket DummyPacket { get; set; }
+        public RadarPacket RadarPacket { get; set; }
 
         public void RegisterComponent(SystemComponent component)
         {

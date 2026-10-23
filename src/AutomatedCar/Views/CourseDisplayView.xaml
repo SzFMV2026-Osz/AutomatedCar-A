@@ -54,6 +54,21 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
 
+              <!-- highlighted by the radar: the object's polygon in red -->
+              <ItemsControl ItemsSource="{Binding RawGeometries, Mode=OneWay}" Width="{Binding Filename, Converter={x:Static visualization:WorldObjectWidthTransformer.Instance}}" Height="{Binding Filename, Converter={x:Static visualization:WorldObjectHeightTransformer.Instance}}" IsVisible="{Binding Highlighted}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Polyline Stroke="Red" StrokeThickness="5" Points="{Binding Points}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+
             </Canvas>
             <!-- I have to transform the canvas, otherwise the object will be outside of the canvas -->
             <Canvas RenderTransformOrigin="{Binding RotationPoint, Converter={x:Static visualization:RenderTransformOriginTransformer.Instance}}">
