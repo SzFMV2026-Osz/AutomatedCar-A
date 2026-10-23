@@ -7,7 +7,7 @@
     using System.Text;
     using System.Threading.Tasks;
 
-    public class CameraPacket
+    public class CameraPacket : ICameraPacket
     {
         public List<WorldObject> RelevantEverything { get; set; } = new List<WorldObject>();
         public List<WorldObject> RelevantObjects { get; set; } = new List<WorldObject>();

@@ -7,7 +7,7 @@
     using System.Text;
     using System.Threading.Tasks;
 
-    public class RadarPacket
+    public class RadarPacket : IRadarPacket
     {
         public List<WorldObject> RelevantObjects { get; set; } = new List<WorldObject>();
         public WorldObject ClosestObject { get; set; }
