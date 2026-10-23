@@ -11,14 +11,17 @@
 
     public class Radar : SystemComponent
     {
+        private readonly AutomatedCar car;
         public Triangle triangle { get; set; }
         public List<WorldObject> AllObjects { get; set; }
         public RadarPacket RadarPacket { get; set; }
-        public Radar(VirtualFunctionBus virtualFunctionBus, Triangle triangle) : base(virtualFunctionBus)
+
+        public Radar(VirtualFunctionBus virtualFunctionBus, Triangle triangle, AutomatedCar car) : base(virtualFunctionBus)
         {
             this.triangle = triangle;
             this.AllObjects = new List<WorldObject>();
             this.RadarPacket = new RadarPacket();
+            this.car = car;
         }
 
         
@@ -26,23 +29,25 @@
         public override void Process()
         {
             //set the sensor triangle
-            this.triangle.SetPoints();
+            this.UpdataTriangle();
 
             //get all wordobj
             this.AllObjects = World.Instance.WorldObjects.ToList();
             this.RadarPacket.RelevantObjects.Clear();
             foreach(WorldObject wb in  this.AllObjects)
             {
-                if(IsItIn(wb))
+                if(IsItIn(wb) && wb != this.car)
                 {
                     RadarPacket.RelevantObjects.Add(wb);
                 }
             }
 
-            this.RadarPacket.ClosestObject.Highlighted = false;
-            this.RadarPacket.ClosestObject = this.RadarPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
-            this.RadarPacket.ClosestObject.Highlighted = true;
-
+            if(this.RadarPacket.ClosestObject != null)
+            {
+                this.RadarPacket.ClosestObject.Highlighted = false;
+                this.RadarPacket.ClosestObject = this.RadarPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
+                this.RadarPacket.ClosestObject.Highlighted = true;
+            }
 
             //upload datas to the bus
             this.virtualFunctionBus.RadarPacket = this.RadarPacket;
@@ -77,6 +82,17 @@
             double dx = worldObject.X - this.triangle.MainPoint.X;
             double dy = worldObject.Y - this.triangle.MainPoint.Y;
             return Math.Sqrt((dx * dx) + (dy * dy));
+        }
+
+        private void UpdataTriangle()
+        {
+            double rotation = this.car.Rotation * Math.PI / 180.0;
+            double frontDistance = this.car.RotationPoint.Y;
+            this.triangle.MainPoint = new Point(
+                this.car.X + (frontDistance * Math.Sin(rotation)),
+                this.car.Y - (frontDistance * Math.Cos(rotation)));
+            this.triangle.Rotation = this.car.Rotation;
+            this.triangle.SetPoints();
         }
     }
 }

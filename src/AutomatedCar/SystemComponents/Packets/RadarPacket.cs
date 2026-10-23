@@ -9,7 +9,7 @@
 
     public class RadarPacket
     {
-        public List<WorldObject> RelevantObjects { get; set; }
+        public List<WorldObject> RelevantObjects { get; set; } = new List<WorldObject>();
         public WorldObject ClosestObject { get; set; }
     }
 }
