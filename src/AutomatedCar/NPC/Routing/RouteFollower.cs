@@ -1,249 +1,239 @@
-﻿using System;
-using AutomatedCar.NPC;
-
-namespace AutomatedCar.NPC.Routing
+﻿namespace AutomatedCar.Npc.Routing
 {
-    /// Moves an NPC along its route. Call <see cref="Step"/> once per tick.
-    /// Coordinates are world pixels, the heading is in degrees (0 = up, clockwise positive),
-    /// the speed is in px/s (see <see cref="Units"/>).
-    /// A waypoint's speed, acceleration and wait time apply from the moment the NPC reaches it:
-    /// the speed is the target speed while heading to the next waypoint.
+    using AutomatedCar.NPC;
+    using AutomatedCar.NPC.Routing;
+    using System;
+
+    /// <summary>
+    /// Moves a point along an <see cref="NpcRoute"/>: position, speed (with acceleration limits),
+    /// heading (with a turn rate limit), looping and waiting. Pure logic without UI dependencies.
+    /// </summary>
     public sealed class RouteFollower
     {
-        private const double FullCircleDegrees = 360.0;
-        private const double HalfCircleDegrees = 180.0;
+        private const double Epsilon = 1e-9;
 
         private readonly NpcRoute route;
         private readonly MotionLimits limits;
-
         private int targetIndex;
-        private double targetSpeedPxPerSec;
-        private double accelerationMps2;
-        private double waitRemainingSeconds;
+        private double targetSpeed;
+        private double currentAccelMps2;
+        private double waitLeft;
 
+        // Initializes a new instance of the "RouteFollower"
+        // Route -> The route to follow (at least 2 waypoints).
+        // Limits -> Movement limits; null means the defaults for the route's NPC kind.
         public RouteFollower(NpcRoute route, MotionLimits limits = null)
         {
-            if (route == null)
-            {
-                throw new ArgumentNullException(nameof(route));
-            }
-
+            this.route = route ?? throw new ArgumentNullException(nameof(route));
             if (route.Waypoints == null || route.Waypoints.Count < 2)
             {
-                throw new ArgumentException("A route needs at least two waypoints.", nameof(route));
+                throw new ArgumentException($"Route '{route.NpcId}' needs at least 2 waypoints.", nameof(route));
             }
 
-            this.route = route;
             this.limits = limits ?? MotionLimits.For(route.Kind);
             this.Reset();
         }
 
-        public double X { get; private set; }
+        /// <summary>Gets the X coordinate in world px.</summary>
+        public double PosX { get; private set; }
 
-        public double Y { get; private set; }
+        /// <summary>Gets the Y coordinate in world px.</summary>
+        public double PosY { get; private set; }
 
-        /// Gets the heading in degrees, 0 = up, clockwise positive, range [0, 360).</summary>
+        /// <summary>Gets the heading in degrees in [0, 360); 0° = up, clockwise positive.</summary>
         public double HeadingDeg { get; private set; }
 
+        /// <summary>Gets the current speed in px/s.</summary>
         public double SpeedPxPerSec { get; private set; }
 
-        public double SpeedMps => Units.PxPerSecToMps(this.SpeedPxPerSec);
+        /// <summary>Gets the current target speed in px/s.</summary>
+        public double TargetSpeedPxPerSec => this.targetSpeed;
 
+        /// <summary>Gets the index of the waypoint the follower is heading to.</summary>
+        public int TargetIndex => this.targetIndex;
+
+        /// <summary>Gets a value indicating whether a non-looping route has been completed.</summary>
+        public bool IsFinished { get; private set; }
+
+        /// <summary>Gets a value indicating whether the follower is waiting at a waypoint.</summary>
+        public bool IsWaiting => this.waitLeft > 0;
+
+        /// <summary>Gets the movement state.</summary>
         public NpcState State { get; private set; }
 
-        /// Gets the index of the waypoint the NPC is heading to.</summary>
-        public int TargetWaypointIndex => this.targetIndex;
-
-        /// Puts the NPC back to the first waypoint, standing still, and starts the route again.
+        /// <summary>Moves the follower back to the first waypoint with zero speed.</summary>
         public void Reset()
         {
-            Waypoint start = this.route.Waypoints[0];
-            this.X = start.X;
-            this.Y = start.Y;
+            var first = this.route.Waypoints[0];
+            var second = this.route.Waypoints[1];
+
+            this.PosX = first.X;
+            this.PosY = first.Y;
             this.SpeedPxPerSec = 0;
-            this.waitRemainingSeconds = 0;
             this.targetIndex = 1;
-            this.State = NpcState.Idle;
-
-            this.ArriveAt(0);
-
-            // At the start the NPC is already facing the first target.
-            this.HeadingDeg = this.DesiredHeadingDeg();
-            this.UpdateState();
+            this.targetSpeed = Units.KmhToPxPerSec(first.SpeedKmh);
+            this.currentAccelMps2 = first.AccelMps2 ?? this.limits.DefaultAccelMps2;
+            this.waitLeft = first.WaitSeconds;
+            this.IsFinished = false;
+            this.HeadingDeg = HeadingOf(second.X - first.X, second.Y - first.Y) ?? 0;
+            this.State = this.IsWaiting ? NpcState.Waiting : NpcState.Idle;
         }
 
-        /// <summary>
-        /// Advances the NPC by the given time.
-        /// </summary>
+        /// <summary>Advances the follower by the given time.</summary>
         /// <param name="deltaSeconds">Elapsed time in seconds.</param>
         public void Step(double deltaSeconds)
         {
-            if (double.IsNaN(deltaSeconds) || deltaSeconds < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(deltaSeconds), "Time step must not be negative.");
-            }
-
-            if (this.State == NpcState.Finished || deltaSeconds == 0)
+            if (this.IsFinished || deltaSeconds <= 0)
             {
                 return;
             }
 
-            double remainingTime = deltaSeconds;
-
-            if (this.waitRemainingSeconds > 0)
+            if (this.waitLeft > 0)
             {
-                // Standing still, but already turning toward the next waypoint.
-                double waitedTime = Math.Min(this.waitRemainingSeconds, deltaSeconds);
-                this.Turn(waitedTime);
-                this.waitRemainingSeconds -= waitedTime;
-                remainingTime = deltaSeconds - waitedTime;
-            }
-
-            if (this.waitRemainingSeconds > 0 || remainingTime <= 0)
-            {
-                this.UpdateState();
+                // stand still, but already turn towards the next waypoint (e.g. a pedestrian turning around)
+                this.waitLeft = Math.Max(0, this.waitLeft - deltaSeconds);
+                this.UpdateHeading(deltaSeconds);
+                this.State = NpcState.Waiting;
                 return;
             }
 
-            this.Drive(remainingTime);
+            this.UpdateSpeed(deltaSeconds);
+            this.Advance(this.SpeedPxPerSec * deltaSeconds);
+            if (!this.IsFinished)
+            {
+                this.UpdateHeading(deltaSeconds);
+            }
+
             this.UpdateState();
         }
 
-        private static double NormalizeDegrees(double degrees)
+        /// <summary>Normalizes an angle to [0, 360).</summary>
+        /// <param name="degrees">Angle in degrees.</param>
+        /// <returns>The normalized angle.</returns>
+        public static double NormalizeDeg(double degrees)
         {
-            double normalized = degrees % FullCircleDegrees;
-            return normalized < 0 ? normalized + FullCircleDegrees : normalized;
+            double result = degrees % 360;
+            return result < 0 ? result + 360 : result;
         }
 
-        /// <summary>Maps an angle difference to (-180, 180], so turning always takes the shorter way.</summary>
-        private static double ShortestAngleDifference(double fromDeg, double toDeg)
+        /// <summary>Heading of a direction vector in screen coordinates (y down): 0° = up, 90° = right.</summary>
+        /// <param name="dx">X component.</param>
+        /// <param name="dy">Y component.</param>
+        /// <returns>The heading in [0, 360), or null for a zero-length vector.</returns>
+        public static double? HeadingOf(double dx, double dy)
         {
-            double difference = NormalizeDegrees(toDeg - fromDeg);
-            return difference > HalfCircleDegrees ? difference - FullCircleDegrees : difference;
-        }
-
-        private double DesiredHeadingDeg()
-        {
-            Waypoint target = this.route.Waypoints[this.targetIndex];
-            double deltaX = target.X - this.X;
-            double deltaY = target.Y - this.Y;
-
-            if (deltaX == 0 && deltaY == 0)
+            if ((dx * dx) + (dy * dy) < Epsilon)
             {
-                return this.HeadingDeg;
+                return null;
             }
 
-            // The world's y axis points down, so "up" (0 degrees) is negative y.
-            return NormalizeDegrees(Math.Atan2(deltaX, -deltaY) * HalfCircleDegrees / Math.PI);
+            return NormalizeDeg(Math.Atan2(dx, -dy) * 180.0 / Math.PI);
         }
 
-        private void Turn(double seconds)
+        private static double MoveTowards(double current, double target, double maxDelta)
         {
-            double maxTurn = this.limits.MaxTurnRateDegPerSec * seconds;
-            double difference = ShortestAngleDifference(this.HeadingDeg, this.DesiredHeadingDeg());
-            double turn = Math.Max(-maxTurn, Math.Min(maxTurn, difference));
-            this.HeadingDeg = NormalizeDegrees(this.HeadingDeg + turn);
+            return Math.Abs(target - current) <= maxDelta
+                ? target
+                : current + (Math.Sign(target - current) * maxDelta);
         }
 
-        private void Drive(double seconds)
+        private void UpdateSpeed(double deltaSeconds)
         {
-            this.Turn(seconds);
-
-            double previousSpeed = this.SpeedPxPerSec;
-            double speedChange = Units.MpsToPxPerSec(this.accelerationMps2) * seconds;
-
-            if (previousSpeed < this.targetSpeedPxPerSec)
-            {
-                this.SpeedPxPerSec = Math.Min(this.targetSpeedPxPerSec, previousSpeed + speedChange);
-            }
-            else if (previousSpeed > this.targetSpeedPxPerSec)
-            {
-                this.SpeedPxPerSec = Math.Max(this.targetSpeedPxPerSec, previousSpeed - speedChange);
-            }
-
-            double averageSpeed = (previousSpeed + this.SpeedPxPerSec) / 2.0;
-            this.MoveAlongHeading(averageSpeed * seconds);
+            double maxDelta = Units.MpsToPxPerSec(this.currentAccelMps2) * deltaSeconds;
+            this.SpeedPxPerSec = MoveTowards(this.SpeedPxPerSec, this.targetSpeed, maxDelta);
         }
 
-        private void MoveAlongHeading(double distance)
+        private void Advance(double distance)
         {
-            // Guards against zero-length routes where waypoints sit on top of each other.
-            int remainingSwitches = this.route.Waypoints.Count * 2;
+            // guard against routes made of identical points
+            int safety = (this.route.Waypoints.Count * 2) + 2;
 
-            while (distance > 0 && this.State != NpcState.Finished && this.waitRemainingSeconds <= 0)
+            while (distance > 0 && !this.IsFinished && safety-- > 0)
             {
-                Waypoint target = this.route.Waypoints[this.targetIndex];
-                double distanceToTarget = Math.Sqrt(Math.Pow(target.X - this.X, 2) + Math.Pow(target.Y - this.Y, 2));
+                var waypoint = this.route.Waypoints[this.targetIndex];
+                double dx = waypoint.X - this.PosX;
+                double dy = waypoint.Y - this.PosY;
+                double length = Math.Sqrt((dx * dx) + (dy * dy));
 
-                if (distanceToTarget <= distance || distanceToTarget <= this.limits.ArrivalTolerancePx)
+                if (length <= distance || length < this.limits.ArrivalTolerancePx)
                 {
-                    if (remainingSwitches-- <= 0)
+                    this.PosX = waypoint.X;
+                    this.PosY = waypoint.Y;
+                    distance -= length;
+                    this.OnWaypointReached(waypoint);
+
+                    if (this.waitLeft > 0)
                     {
-                        return;
+                        break;
                     }
-
-                    // Waypoint reached: the leftover distance is continued on the next leg.
-                    this.X = target.X;
-                    this.Y = target.Y;
-                    distance = Math.Max(0, distance - distanceToTarget);
-                    this.ArriveAt(this.targetIndex);
-                    continue;
                 }
-
-                double headingRadians = this.HeadingDeg * Math.PI / HalfCircleDegrees;
-                this.X += Math.Sin(headingRadians) * distance;
-                this.Y -= Math.Cos(headingRadians) * distance;
-                distance = 0;
+                else
+                {
+                    this.PosX += dx / length * distance;
+                    this.PosY += dy / length * distance;
+                    distance = 0;
+                }
             }
         }
 
-        private void ArriveAt(int waypointIndex)
+        private void OnWaypointReached(Waypoint waypoint)
         {
-            Waypoint waypoint = this.route.Waypoints[waypointIndex];
-            bool isLast = waypointIndex == this.route.Waypoints.Count - 1;
+            this.targetSpeed = Units.KmhToPxPerSec(waypoint.SpeedKmh);
+            this.currentAccelMps2 = waypoint.AccelMps2 ?? this.limits.DefaultAccelMps2;
+            this.waitLeft = waypoint.WaitSeconds;
 
-            this.targetSpeedPxPerSec = Units.KmhToPxPerSec(waypoint.SpeedKmh);
-            this.accelerationMps2 = waypoint.AccelMps2 ?? this.limits.DefaultAccelMps2;
-
-            if (isLast && !this.route.Loop)
+            if (this.targetIndex < this.route.Waypoints.Count - 1)
             {
+                this.targetIndex++;
+            }
+            else if (this.route.Loop)
+            {
+                this.targetIndex = 0;
+            }
+            else
+            {
+                this.IsFinished = true;
                 this.SpeedPxPerSec = 0;
-                this.waitRemainingSeconds = 0;
-                this.State = NpcState.Finished;
+                this.waitLeft = 0;
+            }
+        }
+
+        private void UpdateHeading(double deltaSeconds)
+        {
+            var target = this.route.Waypoints[this.targetIndex];
+            double? targetHeading = HeadingOf(target.X - this.PosX, target.Y - this.PosY);
+            if (targetHeading == null)
+            {
                 return;
             }
 
-            this.targetIndex = isLast ? 0 : waypointIndex + 1;
-
-            if (waypoint.WaitSeconds > 0)
-            {
-                this.SpeedPxPerSec = 0;
-                this.waitRemainingSeconds = waypoint.WaitSeconds;
-            }
+            // signed difference in [-180, 180): always turn the shorter way
+            double diff = NormalizeDeg(targetHeading.Value - this.HeadingDeg + 180) - 180;
+            double maxTurn = this.limits.MaxTurnRateDegPerSec * deltaSeconds;
+            this.HeadingDeg = NormalizeDeg(this.HeadingDeg + Math.Clamp(diff, -maxTurn, maxTurn));
         }
 
         private void UpdateState()
         {
-            if (this.State == NpcState.Finished)
+            if (this.IsFinished)
             {
-                return;
+                this.State = NpcState.Finished;
             }
-
-            if (this.waitRemainingSeconds > 0)
+            else if (this.waitLeft > 0)
             {
                 this.State = NpcState.Waiting;
             }
-            else if (this.SpeedPxPerSec > this.targetSpeedPxPerSec)
+            else if (this.SpeedPxPerSec > this.targetSpeed + Epsilon)
             {
                 this.State = NpcState.Braking;
             }
-            else if (this.SpeedPxPerSec == 0 && this.targetSpeedPxPerSec == 0)
+            else if (this.SpeedPxPerSec > Epsilon)
             {
-                this.State = NpcState.Idle;
+                this.State = NpcState.Moving;
             }
             else
             {
-                this.State = NpcState.Moving;
+                this.State = NpcState.Idle;
             }
         }
     }
