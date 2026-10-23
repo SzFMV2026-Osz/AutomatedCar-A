@@ -1,37 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
-
-namespace AutomatedCar.NPC.Routing
+﻿namespace AutomatedCar.Npc.Routing
 {
+    using AutomatedCar.NPC;
+    using AutomatedCar.NPC.Routing;
+    using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    using System.Reflection;
 
-    /// Loads NPC routes from the embedded Assets/NpcRoutes/{mapName}.json resource.
+    /// Loads NPC routes from the embedded <c>Assets/NpcRoutes/{mapName}.json</c> resources.
     public sealed class JsonNpcRouteRepository : INpcRouteRepository
     {
-        private const int MinimumWaypointCount = 2;
+        /// <summary>Manifest resource name prefix of the route files.</summary>
+        public const string ResourcePrefix = "AutomatedCar.Assets.NpcRoutes.";
 
         private readonly Assembly assembly;
 
+        /// <summary>Initializes a new instance of the <see cref="JsonNpcRouteRepository"/> class using the application assembly.</summary>
         public JsonNpcRouteRepository()
             : this(typeof(JsonNpcRouteRepository).Assembly)
         {
         }
 
+        /// Initializes a new instance of the "JsonNpcRouteRepository"
+        /// Assembly that contains the route resources.
         public JsonNpcRouteRepository(Assembly assembly)
         {
             this.assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
         }
 
-        /// <summary>
-        /// Loads the routes of a map.
-        /// </summary>
-        /// FileNotFoundException -> There is no embedded route file for the map.</exception>
-        /// InvalidDataException ->The file is not valid JSON or the routes are invalid.</exception>
+        /// <inheritdoc/>
         public IReadOnlyList<NpcRoute> Load(string mapName)
         {
             if (string.IsNullOrWhiteSpace(mapName))
@@ -39,79 +38,119 @@ namespace AutomatedCar.NPC.Routing
                 throw new ArgumentException("Map name must not be empty.", nameof(mapName));
             }
 
-            string json = this.ReadResource(mapName);
-            List<NpcRoute> routes = Parse(json, mapName);
-
-            foreach (NpcRoute route in routes)
-            {
-                Validate(route, mapName);
-            }
-
-            return routes;
+            string resourceName = ResourcePrefix + mapName + ".json";
+            using Stream stream = this.assembly.GetManifestResourceStream(resourceName)
+                ?? throw new FileNotFoundException($"NPC route file not found: {resourceName}", resourceName);
+            using var reader = new StreamReader(stream);
+            return Parse(reader.ReadToEnd());
         }
 
-        private static List<NpcRoute> Parse(string json, string mapName)
+        /// Parses the content of a route JSON file.
+        /// returns the routes
+        public static IReadOnlyList<NpcRoute> Parse(string json)
         {
+            RawRouteFile file;
             try
             {
-                var serializer = JsonSerializer.CreateDefault();
-                serializer.Converters.Add(new StringEnumConverter());
-
-                JToken root = JToken.Parse(json);
-
-                // Accepts both a plain array and an object like { "routes": [ ... ] }.
-                JToken routesToken = root is JObject rootObject
-                    ? rootObject.GetValue("routes", StringComparison.OrdinalIgnoreCase)
-                    : root;
-
-                if (!(routesToken is JArray))
-                {
-                    throw new InvalidDataException($"Route file of map '{mapName}' must contain a list of routes.");
-                }
-
-                return routesToken.ToObject<List<NpcRoute>>(serializer) ?? new List<NpcRoute>();
+                file = JsonConvert.DeserializeObject<RawRouteFile>(json ?? string.Empty);
             }
-            catch (JsonException exception)
+            catch (JsonException ex)
             {
-                throw new InvalidDataException($"Route file of map '{mapName}' is not valid: {exception.Message}", exception);
+                throw new InvalidDataException("Invalid NPC route JSON: " + ex.Message, ex);
             }
+
+            if (file?.Npcs == null)
+            {
+                throw new InvalidDataException("NPC route file has no 'npcs' array.");
+            }
+
+            return file.Npcs.Select(ToRoute).ToList();
         }
 
-        private static void Validate(NpcRoute route, string mapName)
+        private static NpcRoute ToRoute(RawNpc raw)
         {
-            if (route == null)
+            if (raw == null || string.IsNullOrWhiteSpace(raw.Id))
             {
-                throw new InvalidDataException($"Route file of map '{mapName}' contains an empty route.");
+                throw new InvalidDataException("Every NPC needs an 'id'.");
             }
 
-            if (string.IsNullOrWhiteSpace(route.NpcId))
+            if (!Enum.TryParse(raw.Kind, ignoreCase: true, out NpcKind kind) || !Enum.IsDefined(kind))
             {
-                throw new InvalidDataException($"Route file of map '{mapName}' contains a route without NpcId.");
+                throw new InvalidDataException($"NPC '{raw.Id}': unknown kind '{raw.Kind}'.");
             }
 
-            if (route.Waypoints == null || route.Waypoints.Count < MinimumWaypointCount || route.Waypoints.Any(waypoint => waypoint == null))
+            if (string.IsNullOrWhiteSpace(raw.Sprite))
             {
-                throw new InvalidDataException($"Route '{route.NpcId}' of map '{mapName}' needs at least {MinimumWaypointCount} waypoints.");
+                throw new InvalidDataException($"NPC '{raw.Id}': missing 'sprite'.");
             }
+
+            if (raw.Waypoints == null || raw.Waypoints.Count < 2)
+            {
+                throw new InvalidDataException($"NPC '{raw.Id}': at least 2 waypoints are required.");
+            }
+
+            var waypoints = raw.Waypoints.Select((w, i) => ToWaypoint(raw.Id, i, w)).ToList();
+            return new NpcRoute(raw.Id, kind, raw.Sprite, raw.Loop ?? true, waypoints);
         }
 
-        private string ReadResource(string mapName)
+        private static Waypoint ToWaypoint(string npcId, int index, RawWaypoint raw)
         {
-            string suffix = ".NpcRoutes." + mapName + ".json";
-            string resourceName = this.assembly
-                .GetManifestResourceNames()
-                .FirstOrDefault(name => name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
-
-            if (resourceName == null)
+            if (raw == null || raw.X == null || raw.Y == null || raw.Speed == null)
             {
-                throw new FileNotFoundException($"No embedded NPC route file found for map '{mapName}'.", mapName + ".json");
+                throw new InvalidDataException($"NPC '{npcId}', waypoint #{index}: 'x', 'y' and 'speed' are required.");
             }
 
-            using (Stream stream = this.assembly.GetManifestResourceStream(resourceName))
-            using (var reader = new StreamReader(stream))
+            if (raw.Speed < 0 || (raw.Accel != null && raw.Accel <= 0) || (raw.Wait != null && raw.Wait < 0))
             {
-                return reader.ReadToEnd();
+                throw new InvalidDataException($"NPC '{npcId}', waypoint #{index}: speed and wait must be >= 0, accel must be > 0.");
             }
+
+            return new Waypoint(raw.X.Value, raw.Y.Value, raw.Speed.Value, raw.Accel, raw.Wait ?? 0);
+        }
+
+        internal sealed class RawRouteFile
+        {
+            [JsonProperty("map")]
+            public string Map { get; set; }
+
+            [JsonProperty("npcs")]
+            public List<RawNpc> Npcs { get; set; }
+        }
+
+        internal sealed class RawNpc
+        {
+            [JsonProperty("id")]
+            public string Id { get; set; }
+
+            [JsonProperty("kind")]
+            public string Kind { get; set; }
+
+            [JsonProperty("sprite")]
+            public string Sprite { get; set; }
+
+            [JsonProperty("loop")]
+            public bool? Loop { get; set; }
+
+            [JsonProperty("waypoints")]
+            public List<RawWaypoint> Waypoints { get; set; }
+        }
+
+        internal sealed class RawWaypoint
+        {
+            [JsonProperty("x")]
+            public double? X { get; set; }
+
+            [JsonProperty("y")]
+            public double? Y { get; set; }
+
+            [JsonProperty("speed")]
+            public double? Speed { get; set; }
+
+            [JsonProperty("accel")]
+            public double? Accel { get; set; }
+
+            [JsonProperty("wait")]
+            public double? Wait { get; set; }
         }
     }
 }
