@@ -83,9 +83,9 @@
             get => this.worldObject.WorldObjectType;
         }
 
-        public bool HighLighted
+        public bool Highlighted
         {
-            get => this.worldObject.HighLighted;
+            get => this.worldObject.Highlighted;
         }
     }
 }

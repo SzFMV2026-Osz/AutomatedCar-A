@@ -16,13 +16,12 @@
         public CollisionDetector(VirtualFunctionBus virtualFunctionBus, AutomatedCar car) : base(virtualFunctionBus)
         {
             this.Car = car;
-            ClosestObject = virtualFunctionBus.RadarPacket.ClosestObject;
         }
         
         public override void Process()
         {
-            ClosestObject = virtualFunctionBus.RadarPacket.ClosestObject;
-            DistanceFromClosestObject.Invoke();
+            ClosestObject = virtualFunctionBus.RadarPacket?.ClosestObject;
+            DistanceFromClosestObject?.Invoke();
         }
     }
 }
