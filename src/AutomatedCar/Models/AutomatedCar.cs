@@ -15,8 +15,8 @@ namespace AutomatedCar.Models
         {
             this.virtualFunctionBus = new VirtualFunctionBus();
             this.ZIndex = 10;
-            this.radar = new Radar(this.virtualFunctionBus, new Triangle(60,200,this.Rotation, new Point(this.X,this.Y)), this);
-            this.camera = new Camera(this.VirtualFunctionBus, new Triangle(60, 80, this.Rotation, new Point(this.X, this.Y)),this);
+            this.radar = new Radar(this.virtualFunctionBus, new Triangle(60,200*50,this.Rotation, new Point(this.X,this.Y)), this);
+            this.camera = new Camera(this.VirtualFunctionBus, new Triangle(60, 80*50, this.Rotation, new Point(this.X, this.Y)),this);
             this.collisionDetector = new CollisionDetector(this.virtualFunctionBus,this);
         }
 
