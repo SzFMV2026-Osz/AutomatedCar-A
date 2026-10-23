@@ -9,6 +9,7 @@ namespace AutomatedCar.Models
         private VirtualFunctionBus virtualFunctionBus;
         public Radar radar { get; set; }
         public Camera camera { get; set; }
+        public CollisionDetector collisionDetector { get; set; }
         public AutomatedCar(int x, int y, string filename)
             : base(x, y, filename)
         {
@@ -16,6 +17,7 @@ namespace AutomatedCar.Models
             this.ZIndex = 10;
             this.radar = new Radar(this.virtualFunctionBus, new Triangle(60,200,this.Rotation, new Point(this.X,this.Y)), this);
             this.camera = new Camera(this.VirtualFunctionBus, new Triangle(60, 80, this.Rotation, new Point(this.X, this.Y)),this);
+            this.collisionDetector = new CollisionDetector(this.virtualFunctionBus,this);
         }
 
         public VirtualFunctionBus VirtualFunctionBus { get => this.virtualFunctionBus; }

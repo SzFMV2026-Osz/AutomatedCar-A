@@ -31,6 +31,8 @@
             //get all wordobj
             this.AllObjects = World.Instance.WorldObjects.ToList();
             this.CameraPacket.RelevantObjects.Clear();
+            this.CameraPacket.RelevantRoads.Clear();
+            this.CameraPacket.RelevantEverything.Clear();
             foreach (WorldObject wb in this.AllObjects)
             {
                 if (IsItIn(wb) && wb != this.car)
@@ -50,7 +52,10 @@
             if (this.CameraPacket.ClosestObject != null)
             {
                 this.CameraPacket.ClosestObject.Highlighted = false;
-                this.CameraPacket.ClosestObject = this.CameraPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
+            }
+            this.CameraPacket.ClosestObject = this.CameraPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
+            if (this.CameraPacket.ClosestObject != null)
+            {
                 this.CameraPacket.ClosestObject.Highlighted = true;
             }
 

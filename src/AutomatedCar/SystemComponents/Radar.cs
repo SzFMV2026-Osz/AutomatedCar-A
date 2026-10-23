@@ -42,11 +42,14 @@
                 }
             }
 
-            if(this.RadarPacket.ClosestObject != null)
+            if (this.RadarPacket.ClosestObject != null)
             {
                 this.RadarPacket.ClosestObject.Highlighted = false;
-                this.RadarPacket.ClosestObject = this.RadarPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
-                this.RadarPacket.ClosestObject.Highlighted = true;
+            }
+            this.RadarPacket.ClosestObject = this.RadarPacket.RelevantObjects.OrderBy(x => this.DistanceFromRadar(x)).FirstOrDefault();
+            if (this.RadarPacket.ClosestObject != null)
+            {
+               this.RadarPacket.ClosestObject.Highlighted = true;
             }
 
             //upload datas to the bus
