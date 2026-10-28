@@ -24,6 +24,8 @@ namespace AutomatedCar.Models
 
         private double rotation;
 
+        private bool highlighted;
+
         public WorldObject(int x, int y, string filename, int zindex = 1, bool collideable = false, WorldObjectType worldObjectType = WorldObjectType.Other)
         {
             this.X = x;
@@ -66,6 +68,15 @@ namespace AutomatedCar.Models
             }
         }
 
+        public bool Highlighted
+        {
+            get => this.highlighted;
+            set
+            {
+                this.highlighted = value;
+                this.PropertyChangedEvent?.Invoke(this, new PropertyChangedEventArgs(nameof(this.Highlighted)));
+            }
+        }
         public Point RotationPoint { get; set; }
 
         public string RenderTransformOrigin { get; set; }
@@ -79,5 +90,6 @@ namespace AutomatedCar.Models
         public bool Collideable { get; set; }
 
         public WorldObjectType WorldObjectType { get; set; }
+
     }
 }

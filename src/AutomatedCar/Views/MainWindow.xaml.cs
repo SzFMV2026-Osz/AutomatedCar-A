@@ -12,31 +12,36 @@ namespace AutomatedCar.Views
             this.InitializeComponent();
         }
 
+        protected override void OnOpened(System.EventArgs e)
+        {
+            base.OnOpened(e);
+            AutomatedCar.Models.World.Instance.ControlledCar.collisionDetector.Collision += (sender, worldObject) =>
+                new Window
+                {
+                    Title = "Collision",
+                    Width = 300,
+                    Height = 100,
+                    Content = new TextBlock { Text = "Collision with: " + worldObject.Filename, Margin = new Avalonia.Thickness(20) },
+                }.Show(this);
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            Keyboard.Keys.Add(e.Key);
+            // false while the key is held down and the OS repeats the event
+            bool isNewKeyPress = Keyboard.Keys.Add(e.Key);
             base.OnKeyDown(e);
 
             MainWindowViewModel viewModel = (MainWindowViewModel)this.DataContext;
 
-            if (Keyboard.IsKeyDown(Key.Up))
+            // throttle, brake and steering (arrow keys) are read by the MovementController every tick
+            if (isNewKeyPress && e.Key == Key.Q)
             {
-                viewModel.CourseDisplay.KeyUp();
+                viewModel.CourseDisplay.ShiftUp();
             }
 
-            if (Keyboard.IsKeyDown(Key.Down))
+            if (isNewKeyPress && e.Key == Key.A)
             {
-                viewModel.CourseDisplay.KeyDown();
-            }
-
-            if (Keyboard.IsKeyDown(Key.Left))
-            {
-                viewModel.CourseDisplay.KeyLeft();
-            }
-
-            if (Keyboard.IsKeyDown(Key.Right))
-            {
-                viewModel.CourseDisplay.KeyRight();
+                viewModel.CourseDisplay.ShiftDown();
             }
 
             if (Keyboard.IsKeyDown(Key.PageUp))
@@ -54,12 +59,12 @@ namespace AutomatedCar.Views
                 viewModel.CourseDisplay.ToggleDebug();
             }
 
-            if (Keyboard.IsKeyDown(Key.D2))
+            if (e.KeySymbol == "ő" || e.KeySymbol == "Ő")
             {
                 viewModel.CourseDisplay.ToggleCamera();
             }
 
-            if (Keyboard.IsKeyDown(Key.D3))
+            if (e.KeySymbol == "ú" || e.KeySymbol == "Ú")
             {
                 viewModel.CourseDisplay.ToggleRadar();
             }
@@ -78,18 +83,6 @@ namespace AutomatedCar.Views
             {
                 new HelpWindow().Show();
                 Keyboard.Keys.Remove(Key.F1);
-            }
-
-            if (Keyboard.IsKeyDown(Key.F5))
-            {
-                viewModel.NextControlledCar();
-                Keyboard.Keys.Remove(Key.F5);
-            }
-
-            if (Keyboard.IsKeyDown(Key.F6))
-            {
-                viewModel.PrevControlledCar();
-                Keyboard.Keys.Remove(Key.F5);
             }
 
             var scrollViewer = this.Get<CourseDisplayView>("courseDisplay").Get<ScrollViewer>("scrollViewer");

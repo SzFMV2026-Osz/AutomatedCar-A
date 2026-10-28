@@ -82,5 +82,10 @@
         {
             get => this.worldObject.WorldObjectType;
         }
+
+        public bool Highlighted
+        {
+            get => this.worldObject.Highlighted;
+        }
     }
 }

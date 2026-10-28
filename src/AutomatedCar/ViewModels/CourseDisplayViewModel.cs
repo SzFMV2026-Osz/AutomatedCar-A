@@ -22,6 +22,34 @@ namespace AutomatedCar.ViewModels
             this.WorldObjects = new ObservableCollection<WorldObjectViewModel>(world.WorldObjects.Select(wo => new WorldObjectViewModel(wo)));
             this.Width = world.Width;
             this.Height = world.Height;
+            var timer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1000 / GameBase.TicksPerSecond) };
+            timer.Tick += (sender, args) => this.RefreshSensorTriangles();
+            timer.Start();
+        }
+
+
+        private Avalonia.Points cameraTriangle = new Avalonia.Points();
+
+        private Avalonia.Points radarTriangle = new Avalonia.Points();
+
+        public Avalonia.Points CameraTriangle
+        {
+            get => this.cameraTriangle;
+            set => this.RaiseAndSetIfChanged(ref this.cameraTriangle, value);
+        }
+
+        public Avalonia.Points RadarTriangle
+        {
+            get => this.radarTriangle;
+            set => this.RaiseAndSetIfChanged(ref this.radarTriangle, value);
+        }
+
+        private void RefreshSensorTriangles()
+        {
+            var camera = World.Instance.ControlledCar.camera.triangle;
+            var radar = World.Instance.ControlledCar.radar.triangle;
+            this.CameraTriangle = new Avalonia.Points { camera.MainPoint, camera.Pt1, camera.Pt2 };
+            this.RadarTriangle = new Avalonia.Points { radar.MainPoint, radar.Pt1, radar.Pt2 };
         }
 
         public int Width { get; set; }
@@ -42,24 +70,14 @@ namespace AutomatedCar.ViewModels
             set => this.RaiseAndSetIfChanged(ref this.debugStatus, value);
         }
 
-        public void KeyUp()
+        public void ShiftUp()
         {
-            World.Instance.ControlledCar.Y -= 5;
+            World.Instance.ControlledCar.MovementController.ShiftUp();
         }
 
-        public void KeyDown()
+        public void ShiftDown()
         {
-            World.Instance.ControlledCar.Y += 5;
-        }
-
-        public void KeyLeft()
-        {
-            World.Instance.ControlledCar.X -= 5;
-        }
-
-        public void KeyRight()
-        {
-            World.Instance.ControlledCar.X += 5;
+            World.Instance.ControlledCar.MovementController.ShiftDown();
         }
 
         public void PageUp()
@@ -84,7 +102,7 @@ namespace AutomatedCar.ViewModels
 
         public void ToggleRadar()
         {
-            // World.Instance.DebugStatus.Radar = !World.Instance.DebugStatus.Radar;
+            this.DebugStatus.Radar = !this.DebugStatus.Radar;
         }
 
         public void ToggleUltrasonic()

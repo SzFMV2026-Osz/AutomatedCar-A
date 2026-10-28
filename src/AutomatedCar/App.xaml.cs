@@ -12,9 +12,26 @@ namespace AutomatedCar
     using Avalonia.Markup.Xaml;
     using Avalonia.Media;
     using Newtonsoft.Json.Linq;
+    using System.Linq;
+    using AutomatedCar.NPC;
+    using AutomatedCar.NPC.Routing;
+    using System;
+    using System.Collections;
+    using AutomatedCar.Npc.Routing;
 
     public class App : Application
     {
+
+        // start positions of the controlled cars per map: x, y, rotation, image
+        private static readonly Dictionary<string, (int X, int Y, int Rotation, string Filename)[]> ControlledCarStarts = new Dictionary<string, (int X, int Y, int Rotation, string Filename)[]>
+        {
+            ["test_world"] = new[] { (480, 1425, 0, "car_1_white.png"), (4250, 1420, -90, "car_1_red.png") },
+            ["oval"] = new[] { (555, 6400, 0, "car_1_white.png"), (12000, 14240, 270, "car_1_red.png") },
+        };
+
+        // kept as a field so the NPC timer lives as long as the application
+        private readonly NpcManager npcManager = new NpcManager();
+
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
@@ -34,12 +51,15 @@ namespace AutomatedCar
         public World CreateWorld()
         {
             var world = World.Instance;
+            string mapName = MapSelection.Resolve(Environment.GetCommandLineArgs().Skip(1).ToList());
 
             // this.AddDummyCircleTo(world);
 
-            world.PopulateFromJSON($"AutomatedCar.Assets.test_world.json");
+            world.PopulateFromJSON($"AutomatedCar.Assets.{mapName}.json");
 
-            this.AddControlledCarsTo(world);
+            this.AddControlledCarsTo(world, mapName);
+
+            this.AddNpcsTo(world, mapName);
 
             return world;
         }
@@ -62,7 +82,7 @@ namespace AutomatedCar
         private void AddDummyCircleTo(World world)
         {
             var circle = new Circle(200, 200, "circle.png", 20);
-            
+
             circle.Width = 40;
             circle.Height = 40;
             circle.ZIndex = 20;
@@ -74,7 +94,7 @@ namespace AutomatedCar
         private AutomatedCar CreateControlledCar(int x, int y, int rotation, string filename)
         {
             var controlledCar = new Models.AutomatedCar(x, y, filename);
-            
+
             controlledCar.Geometry = this.GetControlledCarBoundaryBox();
             controlledCar.RawGeometries.Add(controlledCar.Geometry);
             controlledCar.Geometries.Add(controlledCar.Geometry);
@@ -86,13 +106,25 @@ namespace AutomatedCar
             return controlledCar;
         }
 
-        private void AddControlledCarsTo(World world)
+        private void AddControlledCarsTo(World world, string mapName)
         {
-            var controlledCar = this.CreateControlledCar(480, 1425, 0, "car_1_white.png");
-            var controlledCar2 = this.CreateControlledCar(4250, 1420, -90, "car_1_red.png");
+            foreach (var start in ControlledCarStarts[mapName])
+            {
+                world.AddControlledCar(this.CreateControlledCar(start.X, start.Y, start.Rotation, start.Filename));
+            }
+        }
 
-            world.AddControlledCar(controlledCar);
-            world.AddControlledCar(controlledCar2);
+        private void AddNpcsTo(World world, string mapName)
+        {
+            foreach (var npc in NpcFactory.CreateAll(mapName, new JsonNpcRouteRepository()))
+            {
+                if (npc is WorldObject worldObject)
+                {
+                    world.AddObject(worldObject);
+                };
+                this.npcManager.Register(npc);
+            }
+            this.npcManager.Start();
         }
     }
 }

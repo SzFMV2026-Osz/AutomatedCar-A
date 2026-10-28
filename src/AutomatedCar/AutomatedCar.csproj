@@ -4,7 +4,6 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Models\" />
     <Compile Update="**\*.xaml.cs">
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>
@@ -17,6 +16,7 @@
     <EmbeddedResource Include="Assets\**;Resources\**" />
   </ItemGroup>
   <ItemGroup>
+    <AvaloniaResource Remove="Assets\NpcRoutes\test_world.json" />
     <AvaloniaResource Remove="Assets\oval.csv" />
     <AvaloniaResource Remove="Assets\oval.json" />
   </ItemGroup>

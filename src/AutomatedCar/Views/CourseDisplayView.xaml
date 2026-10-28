@@ -20,6 +20,7 @@
   </UserControl.Styles>
 
   <ScrollViewer HorizontalAlignment="Left" VerticalAlignment="Top" Name="scrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Offset="{Binding Offset, Mode=OneWay}" >
+    <Panel>
     <ItemsControl Name="CourseDisplay" ItemsSource="{Binding WorldObjects, Mode=OneWay}" Width="{Binding Width, Mode=OneWay}" Height="{Binding Height, Mode=OneWay}" HorizontalAlignment="Left" VerticalAlignment="Top">
 
       <ItemsControl.ItemsPanel>
@@ -53,6 +54,21 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+
+              <!-- highlighted by the radar: the object's polygon in red -->
+              <ItemsControl ItemsSource="{Binding RawGeometries, Mode=OneWay}" Width="{Binding Filename, Converter={x:Static visualization:WorldObjectWidthTransformer.Instance}}" Height="{Binding Filename, Converter={x:Static visualization:WorldObjectHeightTransformer.Instance}}" IsVisible="{Binding Highlighted}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Polyline Stroke="Red" StrokeThickness="5" Points="{Binding Points}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
 
             </Canvas>
             <!-- I have to transform the canvas, otherwise the object will be outside of the canvas -->
@@ -90,5 +106,11 @@
         </DataTemplate>
       </ItemsControl.DataTemplates>
     </ItemsControl>
+
+    <Canvas IsHitTestVisible="False">
+      <Polygon Points="{Binding CameraTriangle}" Fill="#5000A0FF" IsVisible="{Binding DebugStatus.Camera}" />
+      <Polygon Points="{Binding RadarTriangle}" Fill="#50FF8000" IsVisible="{Binding DebugStatus.Radar}" />
+    </Canvas>
+    </Panel>
   </ScrollViewer>
 </UserControl>
