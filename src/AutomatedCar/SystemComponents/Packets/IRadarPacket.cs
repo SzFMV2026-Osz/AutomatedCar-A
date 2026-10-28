@@ -11,5 +11,7 @@
     {
         List<WorldObject> RelevantObjects { get; set; }
         WorldObject ClosestObject { get; set; }
+        WorldObject NearestInLane { get; set; }
+        List<WorldObject> AebRelevantObjects { get; set; }
     }
 }

@@ -29,20 +29,20 @@
             this.UpdataTriangle();
 
             //get all wordobj
-            this.AllObjects = World.Instance.WorldObjects.ToList();
+            this.AllObjects = World.Instance.GetObjectsInTriangle(this.triangle.MainPoint, this.triangle.Pt1, this.triangle.Pt2);
             this.CameraPacket.RelevantObjects.Clear();
             this.CameraPacket.RelevantRoads.Clear();
             this.CameraPacket.RelevantEverything.Clear();
             foreach (WorldObject wb in this.AllObjects)
             {
-                if (IsItIn(wb) && wb != this.car)
+                if (wb != this.car)
                 {
                     CameraPacket.RelevantEverything.Add(wb);
                     if(wb.WorldObjectType == WorldObjectType.Road)
                     {
                         CameraPacket.RelevantRoads.Add(wb);
                     }
-                    else
+                    else if (wb.WorldObjectType == WorldObjectType.RoadSign)
                     {
                         CameraPacket.RelevantObjects.Add(wb);
                     }
@@ -64,29 +64,6 @@
 
         }
 
-        private bool IsItIn(WorldObject wb)
-        {
-            Point p = new Point(wb.X, wb.Y);
-
-            Point a = this.triangle.MainPoint;
-            Point b = this.triangle.Pt1;
-            Point c = this.triangle.Pt2;
-
-            double d1 = Sign(p, a, b);
-            double d2 = Sign(p, b, c);
-            double d3 = Sign(p, c, a);
-
-            bool hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
-            bool hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
-
-            return !(hasNegative && hasPositive);
-        }
-
-        private double Sign(Point p1, Point p2, Point p3)
-        {
-            return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
-        }
-
         private double DistanceFromRadar(WorldObject worldObject)
         {
             double dx = worldObject.X - this.triangle.MainPoint.X;
@@ -97,7 +74,7 @@
         private void UpdataTriangle()
         {
             double rotation = this.car.Rotation * Math.PI / 180.0;
-            double frontDistance = this.car.RotationPoint.Y;
+            double frontDistance = this.car.RotationPoint.Y / 2.0;
             this.triangle.MainPoint = new Point(
                 this.car.X + (frontDistance * Math.Sin(rotation)),
                 this.car.Y - (frontDistance * Math.Cos(rotation)));
