@@ -131,7 +131,7 @@
             Assert.Throws<ArgumentException>(() => new JsonNpcRouteRepository().Load(" "));
         }
 
-        [Fact(Skip = "NPC-8")]
+        [Fact]
         public void Load_RealOvalFile_HasBlackVan()
         {
             var routes = new JsonNpcRouteRepository().Load("oval");
@@ -142,7 +142,7 @@
             Assert.False(van.Loop);
         }
 
-        [Fact(Skip = "NPC-8")]
+        [Fact]
         public void Load_RealTestWorldFile_HasCarAndPedestrian()
         {
             var routes = new JsonNpcRouteRepository().Load("test_world");
