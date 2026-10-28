@@ -11,7 +11,11 @@
 
     public class Radar : SystemComponent
     {
+        private const double LaneHalfWidth = 82.5;
+
         private readonly AutomatedCar car;
+
+        private Dictionary<WorldObject, double> previousLateralOffsets = new Dictionary<WorldObject, double>();
         public Triangle triangle { get; set; }
         public List<WorldObject> AllObjects { get; set; }
         public RadarPacket RadarPacket { get; set; }
@@ -31,16 +35,17 @@
             //set the sensor triangle
             this.UpdataTriangle();
 
-            //get all wordobj
-            this.AllObjects = World.Instance.WorldObjects.ToList();
+            this.AllObjects = World.Instance.GetObjectsInTriangle(this.triangle.MainPoint, this.triangle.Pt1, this.triangle.Pt2);
             this.RadarPacket.RelevantObjects.Clear();
             foreach(WorldObject wb in  this.AllObjects)
             {
-                if(IsItIn(wb) && wb != this.car)
+                if(wb != this.car && (wb.Collideable || wb.WorldObjectType == WorldObjectType.Car || wb.WorldObjectType == WorldObjectType.Pedestrian))
                 {
                     RadarPacket.RelevantObjects.Add(wb);
                 }
             }
+
+            this.FindInLaneObjects();
 
             if (this.RadarPacket.ClosestObject != null)
             {
@@ -57,27 +62,38 @@
 
         }
 
-        private bool IsItIn(WorldObject wb)
+        private void FindInLaneObjects()
         {
-            Point p = new Point(wb.X, wb.Y);
+            var lateralOffsets = new Dictionary<WorldObject, double>();
+            double nearestForward = double.MaxValue;
+            this.RadarPacket.NearestInLane = null;
+            this.RadarPacket.AebRelevantObjects = new List<WorldObject>();
 
-            Point a = this.triangle.MainPoint;
-            Point b = this.triangle.Pt1;
-            Point c = this.triangle.Pt2;
+            double rotation = this.car.Rotation * Math.PI / 180.0;
+            foreach (WorldObject wb in this.RadarPacket.RelevantObjects)
+            {
+                double dx = wb.X - this.car.X;
+                double dy = wb.Y - this.car.Y;
+                double lateralOffset = Math.Abs((dx * Math.Cos(rotation)) + (dy * Math.Sin(rotation)));
+                double forward = (dx * Math.Sin(rotation)) - (dy * Math.Cos(rotation));
+                bool inLane = lateralOffset <= LaneHalfWidth;
 
-            double d1 = Sign(p, a, b);
-            double d2 = Sign(p, b, c);
-            double d3 = Sign(p, c, a);
+                if (inLane && forward < nearestForward)
+                {
+                    this.RadarPacket.NearestInLane = wb;
+                    nearestForward = forward;
+                }
 
-            bool hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
-            bool hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+                bool approaching = this.previousLateralOffsets.TryGetValue(wb, out double previous) && lateralOffset < previous;
+                if (inLane || approaching)
+                {
+                    this.RadarPacket.AebRelevantObjects.Add(wb);
+                }
 
-            return !(hasNegative && hasPositive);
-        }
+                lateralOffsets[wb] = lateralOffset;
+            }
 
-        private double Sign(Point p1, Point p2, Point p3)
-        {
-            return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y);
+            this.previousLateralOffsets = lateralOffsets;
         }
 
         private double DistanceFromRadar(WorldObject worldObject)

@@ -11,5 +11,7 @@
     {
         public List<WorldObject> RelevantObjects { get; set; } = new List<WorldObject>();
         public WorldObject ClosestObject { get; set; }
+        public WorldObject NearestInLane { get; set; }
+        public List<WorldObject> AebRelevantObjects { get; set; } = new List<WorldObject>();
     }
 }

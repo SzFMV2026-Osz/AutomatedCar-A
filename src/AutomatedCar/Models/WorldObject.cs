@@ -91,6 +91,5 @@ namespace AutomatedCar.Models
 
         public WorldObjectType WorldObjectType { get; set; }
 
-        public bool HighLighted { get; set; }
     }
 }

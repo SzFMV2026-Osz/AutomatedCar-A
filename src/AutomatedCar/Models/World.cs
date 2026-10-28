@@ -11,6 +11,7 @@
     using Helpers;
     using Visualization;
     using Avalonia.Media;
+    using System.Linq;
 
     public class World
     {
@@ -73,6 +74,11 @@
         public void AddObject(WorldObject worldObject)
         {
             this.WorldObjects.Add(worldObject);
+        }
+
+        public List<WorldObject> GetObjectsInTriangle(Avalonia.Point a, Avalonia.Point b, Avalonia.Point c)
+        {
+            return this.WorldObjects.ToList().Where(worldObject => GeometryHelper.IsInTriangle(worldObject, a, b, c)).ToList();
         }
 
         public void PopulateFromJSON(string filename)

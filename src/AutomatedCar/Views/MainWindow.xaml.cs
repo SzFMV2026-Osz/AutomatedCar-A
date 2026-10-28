@@ -12,6 +12,19 @@ namespace AutomatedCar.Views
             this.InitializeComponent();
         }
 
+        protected override void OnOpened(System.EventArgs e)
+        {
+            base.OnOpened(e);
+            AutomatedCar.Models.World.Instance.ControlledCar.collisionDetector.Collision += (sender, worldObject) =>
+                new Window
+                {
+                    Title = "Collision",
+                    Width = 300,
+                    Height = 100,
+                    Content = new TextBlock { Text = "Collision with: " + worldObject.Filename, Margin = new Avalonia.Thickness(20) },
+                }.Show(this);
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             Keyboard.Keys.Add(e.Key);
@@ -54,12 +67,12 @@ namespace AutomatedCar.Views
                 viewModel.CourseDisplay.ToggleDebug();
             }
 
-            if (Keyboard.IsKeyDown(Key.D2))
+            if (e.KeySymbol == "ő" || e.KeySymbol == "Ő")
             {
                 viewModel.CourseDisplay.ToggleCamera();
             }
 
-            if (Keyboard.IsKeyDown(Key.D3))
+            if (e.KeySymbol == "ú" || e.KeySymbol == "Ú")
             {
                 viewModel.CourseDisplay.ToggleRadar();
             }
@@ -78,18 +91,6 @@ namespace AutomatedCar.Views
             {
                 new HelpWindow().Show();
                 Keyboard.Keys.Remove(Key.F1);
-            }
-
-            if (Keyboard.IsKeyDown(Key.F5))
-            {
-                viewModel.NextControlledCar();
-                Keyboard.Keys.Remove(Key.F5);
-            }
-
-            if (Keyboard.IsKeyDown(Key.F6))
-            {
-                viewModel.PrevControlledCar();
-                Keyboard.Keys.Remove(Key.F5);
             }
 
             var scrollViewer = this.Get<CourseDisplayView>("courseDisplay").Get<ScrollViewer>("scrollViewer");
