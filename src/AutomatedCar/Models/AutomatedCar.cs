@@ -3,6 +3,7 @@ namespace AutomatedCar.Models
     using Avalonia;
     using Avalonia.Media;
     using SystemComponents;
+    using SystemComponents.Movement;
 
     public class AutomatedCar : Car
     {
@@ -14,6 +15,7 @@ namespace AutomatedCar.Models
             : base(x, y, filename)
         {
             this.virtualFunctionBus = new VirtualFunctionBus();
+            this.MovementController = new MovementController(this.virtualFunctionBus, this);
             this.ZIndex = 10;
             this.radar = new Radar(this.virtualFunctionBus, new Triangle(60,200*50,this.Rotation, new Point(this.X,this.Y)), this);
             this.camera = new Camera(this.VirtualFunctionBus, new Triangle(60, 80*50, this.Rotation, new Point(this.X, this.Y)),this);
@@ -21,6 +23,8 @@ namespace AutomatedCar.Models
         }
 
         public VirtualFunctionBus VirtualFunctionBus { get => this.virtualFunctionBus; }
+
+        public MovementController MovementController { get; }
 
         public int Revolution { get; set; }
 

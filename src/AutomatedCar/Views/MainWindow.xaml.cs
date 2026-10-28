@@ -27,29 +27,21 @@ namespace AutomatedCar.Views
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            Keyboard.Keys.Add(e.Key);
+            // false while the key is held down and the OS repeats the event
+            bool isNewKeyPress = Keyboard.Keys.Add(e.Key);
             base.OnKeyDown(e);
 
             MainWindowViewModel viewModel = (MainWindowViewModel)this.DataContext;
 
-            if (Keyboard.IsKeyDown(Key.Up))
+            // throttle, brake and steering (arrow keys) are read by the MovementController every tick
+            if (isNewKeyPress && e.Key == Key.Q)
             {
-                viewModel.CourseDisplay.KeyUp();
+                viewModel.CourseDisplay.ShiftUp();
             }
 
-            if (Keyboard.IsKeyDown(Key.Down))
+            if (isNewKeyPress && e.Key == Key.A)
             {
-                viewModel.CourseDisplay.KeyDown();
-            }
-
-            if (Keyboard.IsKeyDown(Key.Left))
-            {
-                viewModel.CourseDisplay.KeyLeft();
-            }
-
-            if (Keyboard.IsKeyDown(Key.Right))
-            {
-                viewModel.CourseDisplay.KeyRight();
+                viewModel.CourseDisplay.ShiftDown();
             }
 
             if (Keyboard.IsKeyDown(Key.PageUp))

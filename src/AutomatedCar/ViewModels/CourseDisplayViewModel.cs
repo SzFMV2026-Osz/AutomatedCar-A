@@ -70,24 +70,14 @@ namespace AutomatedCar.ViewModels
             set => this.RaiseAndSetIfChanged(ref this.debugStatus, value);
         }
 
-        public void KeyUp()
+        public void ShiftUp()
         {
-            World.Instance.ControlledCar.Y -= 5;
+            World.Instance.ControlledCar.MovementController.ShiftUp();
         }
 
-        public void KeyDown()
+        public void ShiftDown()
         {
-            World.Instance.ControlledCar.Y += 5;
-        }
-
-        public void KeyLeft()
-        {
-            World.Instance.ControlledCar.X -= 5;
-        }
-
-        public void KeyRight()
-        {
-            World.Instance.ControlledCar.X += 5;
+            World.Instance.ControlledCar.MovementController.ShiftDown();
         }
 
         public void PageUp()
