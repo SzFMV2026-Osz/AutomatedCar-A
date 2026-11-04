@@ -1,12 +1,12 @@
 namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
 
-    public class ElectricMotor
+    public class ElectricMotor : IMotor
     {
         public const double IdleRpm = 800;
         public const double MaxTorque = 200; // Nm
-        public const double WheelRadius = 0.33; // m
 
         // rpm change per second when the motor is not connected to the wheels
         private const double FreeRevRate = 4000;
@@ -46,7 +46,7 @@ namespace AutomatedCar.SystemComponents.Movement
         /// <returns>The drive force in N.</returns>
         public double GetDriveForce(double ratio)
         {
-            return this.Torque * ratio / WheelRadius;
+            return this.Torque * ratio / PhysicsConstants.WheelRadius;
         }
 
         private double GetTorqueFactor()

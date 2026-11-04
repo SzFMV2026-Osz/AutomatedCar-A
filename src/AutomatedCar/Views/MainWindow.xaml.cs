@@ -81,7 +81,7 @@ namespace AutomatedCar.Views
             if (Keyboard.IsKeyDown(Key.F6))
             {
                 viewModel.PrevControlledCar();
-                Keyboard.Keys.Remove(Key.F5);
+                Keyboard.Keys.Remove(Key.F6);
             }
 
             var scrollViewer = this.Get<CourseDisplayView>("courseDisplay").Get<ScrollViewer>("scrollViewer");

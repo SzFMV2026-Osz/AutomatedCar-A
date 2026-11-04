@@ -15,7 +15,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
             car.MovementController.SetHmiInput(new DriverInput { Gear = GearPosition.P, Throttle = 100 });
             Run(car, 60);
 
-            Assert.Equal(0, car.MovementController.Dynamics.Speed);
+            Assert.Equal(0, car.MovementController.Speed);
             Assert.Equal(1000, car.Y);
         }
 
@@ -26,7 +26,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
 
             Hold(car, GearPosition.D, throttle: 50, seconds: 3);
 
-            Assert.True(car.MovementController.Dynamics.Speed > 0);
+            Assert.True(car.MovementController.Speed > 0);
             Assert.True(car.Y < 1000);
             Assert.Equal(1000, car.X);
             Assert.True(car.Velocity > 0);
@@ -41,7 +41,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
             Hold(slow, GearPosition.D, throttle: 30, seconds: 2);
             Hold(fast, GearPosition.D, throttle: 90, seconds: 2);
 
-            Assert.True(fast.MovementController.Dynamics.Speed > slow.MovementController.Dynamics.Speed);
+            Assert.True(fast.MovementController.Speed > slow.MovementController.Speed);
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
 
             Hold(car, GearPosition.D, throttle: 100, seconds: 8);
 
-            Assert.True(car.MovementController.Transmission.CurrentGear > 1);
+            Assert.True(car.MovementController.InternalGear > 1);
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
 
             Hold(car, GearPosition.R, throttle: 50, seconds: 2);
 
-            Assert.True(car.MovementController.Dynamics.Speed < 0);
+            Assert.True(car.MovementController.Speed < 0);
             Assert.True(car.Y > 1000);
         }
 
@@ -72,7 +72,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
 
             Hold(car, GearPosition.N, throttle: 100, seconds: 2);
 
-            Assert.Equal(0, car.MovementController.Dynamics.Speed);
+            Assert.Equal(0, car.MovementController.Speed);
             Assert.True(car.Revolution > 3000);
         }
 
@@ -84,13 +84,13 @@ namespace AutomatedCarTests.SystemComponents.Movement
 
             // the released pedal returns to zero within 1 second
             Run(car, 60);
-            double speed = car.MovementController.Dynamics.Speed;
+            double speed = car.MovementController.Speed;
 
             Run(car, 60);
-            Assert.InRange(car.MovementController.Dynamics.Speed, 0.01, speed - 0.01);
+            Assert.InRange(car.MovementController.Speed, 0.01, speed - 0.01);
 
             Run(car, 60 * 120);
-            Assert.Equal(0, car.MovementController.Dynamics.Speed);
+            Assert.Equal(0, car.MovementController.Speed);
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace AutomatedCarTests.SystemComponents.Movement
             car.MovementController.SetAssistInput(InputSource.AEB, new DriverInput { Brake = 100 });
             Hold(car, GearPosition.D, throttle: 100, seconds: 3);
 
-            Assert.Equal(0, car.MovementController.Dynamics.Speed);
+            Assert.Equal(0, car.MovementController.Speed);
         }
 
         [Fact]
@@ -130,14 +130,14 @@ namespace AutomatedCarTests.SystemComponents.Movement
             car.MovementController.ShiftUp();
             car.MovementController.ShiftUp();
             car.MovementController.Process(Dt);
-            Assert.Equal(GearPosition.R, car.MovementController.Transmission.Position);
+            Assert.Equal(GearPosition.R, car.MovementController.Gear);
 
             Run(car, 5);
-            Assert.Equal(GearPosition.D, car.MovementController.Transmission.Position);
+            Assert.Equal(GearPosition.D, car.MovementController.Gear);
 
             car.MovementController.ShiftDown();
             Run(car, 5);
-            Assert.Equal(GearPosition.N, car.MovementController.Transmission.Position);
+            Assert.Equal(GearPosition.N, car.MovementController.Gear);
         }
 
         private static AutomatedCar.Models.AutomatedCar CreateCar()

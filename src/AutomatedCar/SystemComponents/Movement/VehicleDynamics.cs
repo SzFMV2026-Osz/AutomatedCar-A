@@ -1,11 +1,10 @@
 namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
 
-    public class VehicleDynamics
+    public class VehicleDynamics : IVehicleDynamics
     {
-        public const double PixelsPerMeter = 50;
-
         public double Mass { get; set; } = 1500; // kg
 
         /// <summary>Gets or sets the constant resistance force (rolling resistance and drivetrain losses) in N.</summary>
@@ -40,7 +39,7 @@ namespace AutomatedCar.SystemComponents.Movement
         /// <returns>Wheel rpm, negative when going backwards.</returns>
         public double GetWheelRpm()
         {
-            return this.Speed / (2 * Math.PI * ElectricMotor.WheelRadius) * 60;
+            return this.Speed / (2 * Math.PI * PhysicsConstants.WheelRadius) * 60;
         }
 
         /// <summary>Calculates the movement of the car on the screen. Rotation 0 means the car faces up.</summary>
@@ -52,8 +51,8 @@ namespace AutomatedCar.SystemComponents.Movement
         public MotionVector CalculateMotion(double speed, double yawRate, double heading, double dt)
         {
             double deltaRotation = yawRate * dt;
-            double averageHeading = (heading + (deltaRotation / 2)) * Math.PI / 180;
-            double distance = speed * dt * PixelsPerMeter;
+            double averageHeading = PhysicsConstants.ToRadians(heading + (deltaRotation / 2));
+            double distance = speed * dt * PhysicsConstants.PixelsPerMeter;
 
             return new MotionVector(
                 distance * Math.Sin(averageHeading),

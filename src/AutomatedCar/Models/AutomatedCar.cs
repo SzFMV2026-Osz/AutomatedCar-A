@@ -3,6 +3,7 @@ namespace AutomatedCar.Models
     using Avalonia.Media;
     using SystemComponents;
     using SystemComponents.Movement;
+    using SystemComponents.Movement.Interfaces;
 
     public class AutomatedCar : Car
     {
@@ -18,7 +19,7 @@ namespace AutomatedCar.Models
 
         public VirtualFunctionBus VirtualFunctionBus { get => this.virtualFunctionBus; }
 
-        public MovementController MovementController { get; }
+        public IMovementController MovementController { get; }
 
         public int Revolution { get; set; }
 

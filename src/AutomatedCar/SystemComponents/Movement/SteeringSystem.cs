@@ -1,9 +1,13 @@
 namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
 
-    public class SteeringSystem
+    public class SteeringSystem : ISteeringSystem
     {
+        // below this tan(angle) the wheels are considered straight
+        private const double StraightTolerance = 1e-9;
+
         public double MaxWheelAngle { get; set; } = 60; // degrees
 
         public double WheelBase { get; set; } = 2.8; // m
@@ -23,8 +27,8 @@ namespace AutomatedCar.SystemComponents.Movement
         /// <returns>Turning radius in m, infinity when going straight.</returns>
         public double GetTurningRadius(double angle)
         {
-            double tan = Math.Tan(Math.Abs(angle) * Math.PI / 180);
-            return tan < 1e-9 ? double.PositiveInfinity : (this.WheelBase / tan) + this.CarWidth;
+            double tan = Math.Tan(PhysicsConstants.ToRadians(Math.Abs(angle)));
+            return tan < StraightTolerance ? double.PositiveInfinity : (this.WheelBase / tan) + this.CarWidth;
         }
 
         /// <summary>Gets how fast the car turns. Positive is clockwise (right) on the screen.</summary>
@@ -39,7 +43,7 @@ namespace AutomatedCar.SystemComponents.Movement
                 return 0;
             }
 
-            return Math.Sign(angle) * speed / radius * 180 / Math.PI;
+            return Math.Sign(angle) * PhysicsConstants.ToDegrees(speed / radius);
         }
     }
 }

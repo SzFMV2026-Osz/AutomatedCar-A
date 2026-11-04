@@ -65,8 +65,8 @@ namespace AutomatedCarTests.SystemComponents.Movement
             var right = dynamics.CalculateMotion(1, 0, 90, 1);
 
             Assert.Equal(0, up.DeltaX, 6);
-            Assert.Equal(-VehicleDynamics.PixelsPerMeter, up.DeltaY, 6);
-            Assert.Equal(VehicleDynamics.PixelsPerMeter, right.DeltaX, 6);
+            Assert.Equal(-PhysicsConstants.PixelsPerMeter, up.DeltaY, 6);
+            Assert.Equal(PhysicsConstants.PixelsPerMeter, right.DeltaX, 6);
             Assert.Equal(0, right.DeltaY, 6);
         }
 

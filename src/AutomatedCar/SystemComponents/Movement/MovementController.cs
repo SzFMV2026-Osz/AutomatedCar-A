@@ -1,20 +1,19 @@
 namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
     using AutomatedCar.SystemComponents.Packets;
-    using Avalonia.Input;
 
     /// <summary>Moves the controlled car: powertrain (pedals, gearbox, motor) and steering.</summary>
-    public class MovementController : SystemComponent
+    public class MovementController : SystemComponent, IMovementController
     {
-        private const double MetersPerSecondToKmh = 3.6;
-
         private readonly Models.AutomatedCar car;
-        private readonly InputResolver inputResolver = new ();
-        private readonly Transmission transmission = new ();
-        private readonly ElectricMotor motor = new ();
-        private readonly SteeringSystem steering = new ();
-        private readonly VehicleDynamics dynamics = new ();
+        private readonly IHmiInputProvider hmiInputProvider;
+        private readonly IInputResolver inputResolver;
+        private readonly ITransmission transmission;
+        private readonly IMotor motor;
+        private readonly ISteeringSystem steering;
+        private readonly IVehicleDynamics dynamics;
         private readonly PowertrainPacket powertrainPacket = new ();
 
         // the car's coordinates are integers, the sub-pixel part of the movement is kept here
@@ -22,19 +21,46 @@ namespace AutomatedCar.SystemComponents.Movement
         private double y;
 
         public MovementController(VirtualFunctionBus virtualFunctionBus, Models.AutomatedCar car)
+            : this(
+                virtualFunctionBus,
+                car,
+                new KeyboardInputProvider(car),
+                new InputResolver(),
+                new Transmission(),
+                new ElectricMotor(),
+                new SteeringSystem(),
+                new VehicleDynamics())
+        {
+        }
+
+        public MovementController(
+            VirtualFunctionBus virtualFunctionBus,
+            Models.AutomatedCar car,
+            IHmiInputProvider hmiInputProvider,
+            IInputResolver inputResolver,
+            ITransmission transmission,
+            IMotor motor,
+            ISteeringSystem steering,
+            IVehicleDynamics dynamics)
             : base(virtualFunctionBus)
         {
             this.car = car;
+            this.hmiInputProvider = hmiInputProvider;
+            this.inputResolver = inputResolver;
+            this.transmission = transmission;
+            this.motor = motor;
+            this.steering = steering;
+            this.dynamics = dynamics;
             this.x = car.X;
             this.y = car.Y;
             virtualFunctionBus.PowertrainPacket = this.powertrainPacket;
         }
 
-        public Transmission Transmission => this.transmission;
+        public double Speed => this.dynamics.Speed;
 
-        public ElectricMotor Motor => this.motor;
+        public GearPosition Gear => this.transmission.Position;
 
-        public VehicleDynamics Dynamics => this.dynamics;
+        public int InternalGear => this.transmission.CurrentGear;
 
         public override void Process()
         {
@@ -43,15 +69,52 @@ namespace AutomatedCar.SystemComponents.Movement
 
         public void Process(double dt)
         {
-            // only the selected car listens to the keyboard
-            if (this.IsSelectedCar())
+            DriverInput input = this.ReadInput(dt);
+            double speed = this.UpdatePowertrain(input, dt);
+
+            double wheelAngle = this.steering.GetWheelAngle(input.Steering);
+            double yawRate = this.steering.GetYawRate(speed, wheelAngle);
+            this.ApplyMotion(this.dynamics.CalculateMotion(speed, yawRate, this.car.Rotation, dt));
+
+            this.PublishState(input, wheelAngle);
+        }
+
+        public void SetHmiInput(DriverInput input)
+        {
+            this.inputResolver.SetHmiInput(input);
+        }
+
+        public void SetAssistInput(InputSource source, DriverInput input)
+        {
+            this.inputResolver.SetAssistInput(source, input);
+        }
+
+        public void ShiftUp()
+        {
+            if (this.inputResolver.HmiGear < GearPosition.D)
             {
-                this.ReadKeyboard(dt);
+                this.inputResolver.SetHmiGear(this.inputResolver.HmiGear + 1);
             }
+        }
 
+        public void ShiftDown()
+        {
+            if (this.inputResolver.HmiGear > GearPosition.P)
+            {
+                this.inputResolver.SetHmiGear(this.inputResolver.HmiGear - 1);
+            }
+        }
+
+        private DriverInput ReadInput(double dt)
+        {
+            this.hmiInputProvider.ReadInput(this.inputResolver, dt);
             this.inputResolver.ApplyReturnToZero(dt);
-            DriverInput input = this.inputResolver.Resolve();
+            return this.inputResolver.Resolve();
+        }
 
+        /// <summary>Gearbox, motor and forces: calculates the new speed from the input.</summary>
+        private double UpdatePowertrain(DriverInput input, double dt)
+        {
             this.SyncGearPosition(input.Gear);
             this.transmission.UpdateGear(this.motor.Rpm, this.dynamics.Speed);
             double ratio = this.transmission.GetRatio();
@@ -66,67 +129,7 @@ namespace AutomatedCar.SystemComponents.Movement
 
             // in P the parking lock (and the hand brake) holds the car
             int brake = this.transmission.Position == GearPosition.P ? DriverInput.PedalMax : input.Brake;
-            double speed = this.dynamics.UpdateSpeed(driveForce, brake, dt);
-
-            double wheelAngle = this.steering.GetWheelAngle(input.Steering);
-            double yawRate = this.steering.GetYawRate(speed, wheelAngle);
-            MotionVector motion = this.dynamics.CalculateMotion(speed, yawRate, this.car.Rotation, dt);
-
-            this.ApplyMotion(motion);
-            this.UpdateState(input, wheelAngle);
-        }
-
-        public void SetHmiInput(DriverInput input)
-        {
-            this.inputResolver.SetHmiInput(input);
-        }
-
-        public void SetAssistInput(InputSource source, DriverInput input)
-        {
-            this.inputResolver.SetAssistInput(source, input);
-        }
-
-        /// <summary>Steps the requested gear position forward on the P-R-N-D sequence.</summary>
-        public void ShiftUp()
-        {
-            if (this.inputResolver.HmiGear < GearPosition.D)
-            {
-                this.inputResolver.SetHmiGear(this.inputResolver.HmiGear + 1);
-            }
-        }
-
-        /// <summary>Steps the requested gear position backward on the P-R-N-D sequence.</summary>
-        public void ShiftDown()
-        {
-            if (this.inputResolver.HmiGear > GearPosition.P)
-            {
-                this.inputResolver.SetHmiGear(this.inputResolver.HmiGear - 1);
-            }
-        }
-
-        private bool IsSelectedCar()
-        {
-            var world = Models.World.Instance;
-            return world.controlledCars.Count > 0 && world.ControlledCar == this.car;
-        }
-
-        private void ReadKeyboard(double dt)
-        {
-            if (Keyboard.IsKeyDown(Key.Up))
-            {
-                this.inputResolver.PressThrottle(dt);
-            }
-
-            if (Keyboard.IsKeyDown(Key.Down))
-            {
-                this.inputResolver.PressBrake(dt);
-            }
-
-            int steeringDirection = (Keyboard.IsKeyDown(Key.Right) ? 1 : 0) - (Keyboard.IsKeyDown(Key.Left) ? 1 : 0);
-            if (steeringDirection != 0)
-            {
-                this.inputResolver.TurnSteering(steeringDirection, dt);
-            }
+            return this.dynamics.UpdateSpeed(driveForce, brake, dt);
         }
 
         // the gearbox is sequential, it steps one position per cycle towards the requested one
@@ -162,11 +165,11 @@ namespace AutomatedCar.SystemComponents.Movement
             }
         }
 
-        private void UpdateState(DriverInput input, double wheelAngle)
+        private void PublishState(DriverInput input, double wheelAngle)
         {
             double speed = this.dynamics.Speed;
-            this.car.Speed = (int)Math.Round(speed * VehicleDynamics.PixelsPerMeter);
-            this.car.Velocity = (int)Math.Round(Math.Abs(speed) * MetersPerSecondToKmh);
+            this.car.Speed = (int)Math.Round(speed * PhysicsConstants.PixelsPerMeter);
+            this.car.Velocity = (int)Math.Round(Math.Abs(speed) * PhysicsConstants.MetersPerSecondToKmh);
             this.car.Revolution = (int)Math.Round(this.motor.Rpm);
 
             this.powertrainPacket.Gear = this.transmission.Position;

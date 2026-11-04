@@ -1,11 +1,15 @@
 namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
 
-    public class Transmission
+    public class Transmission : ITransmission
     {
         public const double FinalDriveRatio = 4.1;
         public const double ReverseGearRatio = 3.6;
+
+        // below this speed (m/s) the car is considered standing, and D starts from the 1st gear
+        private const double StandstillSpeed = 0.1;
 
         private readonly double[] gearRatios = { 3.6, 2.2, 1.5, 1.1, 0.85 };
 
@@ -46,7 +50,7 @@ namespace AutomatedCar.SystemComponents.Movement
                 return;
             }
 
-            if (Math.Abs(speed) < 0.1)
+            if (Math.Abs(speed) < StandstillSpeed)
             {
                 this.CurrentGear = 1;
             }

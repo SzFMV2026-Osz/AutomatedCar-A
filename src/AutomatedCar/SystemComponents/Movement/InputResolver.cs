@@ -2,13 +2,20 @@ namespace AutomatedCar.SystemComponents.Movement
 {
     using System;
     using System.Collections.Generic;
+    using AutomatedCar.SystemComponents.Movement.Interfaces;
 
     /// <summary>Merges the driver (HMI) input with the higher priority inputs of the driver assistance systems.</summary>
-    public class InputResolver
+    public class InputResolver : IInputResolver
     {
         public const double PedalPressRate = 50; // units per second, full press in 2 s
         public const double SteeringTurnRate = 100; // units per second
         public const double ReturnToZeroRate = 100; // units per second, full return in 1 s
+
+        // pedal inputs of these sources are merged, the strongest wins
+        private static readonly InputSource[] PedalSources = { InputSource.ACC, InputSource.PP, InputSource.AEB };
+
+        // steering inputs of these sources override the driver, in priority order
+        private static readonly InputSource[] SteeringSources = { InputSource.PP, InputSource.LKA };
 
         private readonly Dictionary<InputSource, DriverInput> assistInputs = new ();
 
@@ -115,7 +122,7 @@ namespace AutomatedCar.SystemComponents.Movement
                 Steering = (int)Math.Round(this.steering),
             };
 
-            foreach (var source in new[] { InputSource.ACC, InputSource.PP, InputSource.AEB })
+            foreach (var source in PedalSources)
             {
                 if (this.assistInputs.TryGetValue(source, out DriverInput assist))
                 {
@@ -132,7 +139,7 @@ namespace AutomatedCar.SystemComponents.Movement
                 result.Throttle = 0;
             }
 
-            foreach (var source in new[] { InputSource.PP, InputSource.LKA })
+            foreach (var source in SteeringSources)
             {
                 if (this.assistInputs.TryGetValue(source, out DriverInput assist))
                 {

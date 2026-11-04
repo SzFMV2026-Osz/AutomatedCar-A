@@ -18,7 +18,6 @@ namespace AutomatedCar.SystemComponents.Packets
 
         int Rpm { get; }
 
-        /// <summary>Gets the speed in km/h.</summary>
         int Velocity { get; }
     }
 }
