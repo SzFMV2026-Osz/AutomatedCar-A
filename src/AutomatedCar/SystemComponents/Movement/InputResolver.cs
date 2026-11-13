@@ -28,6 +28,10 @@ namespace AutomatedCar.SystemComponents.Movement
 
         public GearPosition HmiGear { get; private set; } = GearPosition.P;
 
+        public int DriverThrottle => (int)Math.Round(this.throttle);
+
+        public int DriverBrake => (int)Math.Round(this.brake);
+
         /// <summary>Overrides the HMI input with absolute values.</summary>
         /// <param name="input">The new HMI input.</param>
         public void SetHmiInput(DriverInput input)

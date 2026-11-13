@@ -9,6 +9,8 @@ namespace AutomatedCar.SystemComponents.Packets
         private int internalGear;
         private int throttle;
         private int brake;
+        private int driverThrottle;
+        private int driverBrake;
         private int steering;
         private double wheelAngle;
         private int rpm;
@@ -36,6 +38,18 @@ namespace AutomatedCar.SystemComponents.Packets
         {
             get => this.brake;
             set => this.RaiseAndSetIfChanged(ref this.brake, value);
+        }
+
+        public int DriverThrottle
+        {
+            get => this.driverThrottle;
+            set => this.RaiseAndSetIfChanged(ref this.driverThrottle, value);
+        }
+
+        public int DriverBrake
+        {
+            get => this.driverBrake;
+            set => this.RaiseAndSetIfChanged(ref this.driverBrake, value);
         }
 
         public int Steering

@@ -12,6 +12,12 @@ namespace AutomatedCar.SystemComponents.Packets
 
         int Brake { get; }
 
+        /// <summary>Gets the throttle pressed by the driver alone, without the driver assistance systems.</summary>
+        int DriverThrottle { get; }
+
+        /// <summary>Gets the brake pressed by the driver alone, without the driver assistance systems.</summary>
+        int DriverBrake { get; }
+
         int Steering { get; }
 
         double WheelAngle { get; }

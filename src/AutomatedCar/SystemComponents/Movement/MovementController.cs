@@ -176,6 +176,8 @@ namespace AutomatedCar.SystemComponents.Movement
             this.powertrainPacket.InternalGear = this.transmission.CurrentGear;
             this.powertrainPacket.Throttle = input.Throttle;
             this.powertrainPacket.Brake = input.Brake;
+            this.powertrainPacket.DriverThrottle = this.inputResolver.DriverThrottle;
+            this.powertrainPacket.DriverBrake = this.inputResolver.DriverBrake;
             this.powertrainPacket.Steering = input.Steering;
             this.powertrainPacket.WheelAngle = wheelAngle;
             this.powertrainPacket.Rpm = this.car.Revolution;

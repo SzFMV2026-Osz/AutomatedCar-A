@@ -5,6 +5,12 @@ namespace AutomatedCar.SystemComponents.Movement.Interfaces
     {
         GearPosition HmiGear { get; }
 
+        /// <summary>Gets the throttle of the driver (keyboard or HMI) alone, before merging the assistance systems.</summary>
+        int DriverThrottle { get; }
+
+        /// <summary>Gets the brake of the driver (keyboard or HMI) alone, before merging the assistance systems.</summary>
+        int DriverBrake { get; }
+
         /// <summary>Overrides the HMI input with absolute values.</summary>
         /// <param name="input">The new HMI input.</param>
         void SetHmiInput(DriverInput input);
