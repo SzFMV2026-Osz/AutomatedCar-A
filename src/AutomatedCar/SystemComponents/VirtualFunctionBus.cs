@@ -1,5 +1,6 @@
 namespace AutomatedCar.SystemComponents
 {
+    using AutomatedCar.ACC;
     using AutomatedCar.SystemComponents.Packets;
     using System.Collections.Generic;
 
@@ -12,6 +13,8 @@ namespace AutomatedCar.SystemComponents
         public ICameraPacket CameraPacket { get; set; }
 
         public IReadOnlyPowertrainPacket PowertrainPacket { get; set; }
+
+        public IReadOnlyAccPacket AccPacket { get; set; }
 
         public void RegisterComponent(SystemComponent component)
         {
